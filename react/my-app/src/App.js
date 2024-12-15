@@ -8,8 +8,7 @@ import SignUp from './SignUp';
 import axios from "axios";
 
 
-
-
+BEAPI=propcess.env.BEAPI
 
 
 
@@ -24,7 +23,7 @@ function Home() {
     setLoading(true);
     setError(null);
 
-    fetch('http://localhost:8000/post') // バックエンドAPIのURLに変更してください
+    fetch('${BEAPI}/post') // バックエンドAPIのURLに変更してください
       .then((response) => {
         if (!response.ok) {
           throw new Error('Network response was not ok');
@@ -44,7 +43,7 @@ function Home() {
   };
 
   const sendIdToBackend = (id) => {
-    fetch(`http://localhost:8000/like`, {
+    fetch(`${BEAPI}/like`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,7 +72,7 @@ function Home() {
       return;
     }
 
-    fetch(`http://localhost:8000/comment`, {
+    fetch(`${BEAPI}/comment`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -183,7 +182,7 @@ function Loginac() {
       return;
     }
   
-    const endpoint = `http://localhost:8000/get-mail?mail=${encodeURIComponent(mail)}`;
+    const endpoint = `${BEAPI}/get-mail?mail=${encodeURIComponent(mail)}`;
   
     try {
       const response = await fetch(endpoint, {
@@ -271,7 +270,7 @@ function Post() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const API_URL ="http://localhost:8000/post";
+  const API_URL ="${BEAPI}/post";
   
   const GEMINI_API_URL ="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?";
 
