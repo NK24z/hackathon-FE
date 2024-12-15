@@ -8,7 +8,7 @@ import SignUp from './SignUp';
 import axios from "axios";
 
 
-BEAPI=https://hackathon-980031394301.us-central1.run.app;
+BEAPI=https://hackathon-be-980031394301.us-central1.run.app
 
 
 
