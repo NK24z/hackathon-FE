@@ -9,17 +9,148 @@ import axios from "axios";
 
 
 
+
+
+
+
 function Home() {
+  const [content, setContent] = useState([]); // データを保存するステート
+  const [loading, setLoading] = useState(false); // ローディング状態
+  const [error, setError] = useState(null); // エラー状態
+  const [activeFormId, setActiveFormId] = useState(null); // 現在表示中のフォームのID
+  const [formContent, setFormContent] = useState(''); // フォームの入力内容
+
+  const fetchContent = () => {
+    setLoading(true);
+    setError(null);
+
+    fetch('http://localhost:8000/post') // バックエンドAPIのURLに変更してください
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Network response was not ok');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log(data);
+        setContent(data); // データをステートに保存
+        setLoading(false); // ローディング完了
+      })
+      .catch((error) => {
+        console.error('Fetch error:', error);
+        setError(error); // エラーを保存
+        setLoading(false);
+      });
+  };
+
+  const sendIdToBackend = (id) => {
+    fetch(`http://localhost:8000/like`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to send ID');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log('Response from backend:', data);
+        alert(`ID ${id} was sent successfully!`);
+      })
+      .catch((error) => {
+        console.error('Error sending ID:', error);
+        alert(`Failed to send ID ${id}: ${error.message}`);
+      });
+  };
+
+  const handleFormSubmit = (id) => {
+    if (!formContent) {
+      alert('Please enter content');
+      return;
+    }
+
+    fetch(`http://localhost:8000/comment`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ id, content: formContent }),
+    })
+      .then((response) => {
+        if (!response.ok) {
+          throw new Error('Failed to submit form');
+        }
+        return response.json();
+      })
+      .then((data) => {
+        console.log('Response from backend:', data);
+        alert(`Content submitted successfully for ID ${id}!`);
+        setFormContent(''); // フォームをリセット
+        setActiveFormId(null); // フォームを閉じる
+      })
+      .catch((error) => {
+        console.error('Error submitting form:', error);
+        alert(`Failed to submit content: ${error.message}`);
+      });
+  };
+
   return (
-    <div class="container">
-      
-      <div class="body">
-        <h1 class="maintext">Home</h1>
-        
-      </div>
+    <div>
+      <h1>Content List</h1>
+      <button onClick={fetchContent}>Load Content</button>
+      {loading && <div>Loading...</div>}
+      {error && <div>Error: {error.message}</div>}
+      <ul>
+        {content.map((item) => (
+          <li key={item.id} style={{ marginBottom: '20px', padding: '10px', border: '1px solid #ccc' }}>
+            <h2>{item.content}</h2>
+            <p>Likes: {item.like_count}</p>
+            <p>Replies: {(item.replies ?? []).length}</p>
+            <button onClick={() => sendIdToBackend(item.id)}>Like</button>
+            <button
+              onClick={() =>
+                setActiveFormId(activeFormId === item.id ? null : item.id)
+              }
+            >
+              Add Comment
+            </button>
+            {/* フォームを該当アイテムの下に表示 */}
+            {activeFormId === item.id && (
+              <div style={{ marginTop: '10px', padding: '10px', border: '1px solid #ddd' }}>
+                <textarea
+                  value={formContent}
+                  onChange={(e) => setFormContent(e.target.value)}
+                  placeholder="Enter your comment here"
+                  style={{ width: '100%', height: '80px' }}
+                />
+                <button onClick={() => handleFormSubmit(item.id)}>Submit</button>
+              </div>
+            )}
+
+            {/* Replies を表示 */}
+            {item.replies && item.replies.length > 0 && (
+              <ul style={{ marginTop: '10px', paddingLeft: '20px', borderLeft: '2px solid #ddd' }}>
+                {item.replies.map((reply) => (
+                  <li key={reply.id} style={{ marginBottom: '10px' }}>
+                    <p>{reply.content}</p>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }
+
+  
+
+
 
 function Search() {
   return (
@@ -37,45 +168,90 @@ function Contact() {
   );
 }
 
-function Loginac(){
-  const [email, setEmail] = useState("");
+function Loginac() {
+  const [mail, setMail] = useState("");
   const [password, setPassword] = useState("");
+  const [username, setUsername] = useState("");
+  const [error, setError] = useState(null);
+  const [user, setUser] = useState(null); // ユーザー情報を保存
 
+  // ユーザー認証状態の監視
 
-  const handleLogin = async () => {
+  const fetchUserData = async (mail) => {
+    if (!mail) {
+      console.error("mail parameter is required.");
+      return;
+    }
+  
+    const endpoint = `http://localhost:8000/get-mail?mail=${encodeURIComponent(mail)}`;
+  
     try {
-      await signInWithEmailAndPassword(fireAuth, email, password);
-      setEmail("");
-      setPassword("");
+      const response = await fetch(endpoint, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+        },
+      });
+  
+      if (!response.ok) {
+        console.error(`Error: ${response.status} - ${response.statusText}`);
+        return;
+      }
+  
+      const data = await response.json();
+      console.log("mail:", mail);
+      console.log("User Data:", data);
     } catch (error) {
-      console.error("Login Error:", error.message);
-      alert(error.message);
+      console.error("Fetch error:", error);
     }
   };
+  
+
+
+  // ログイン処理
+  const handleLogin = async () => {
+    try {
+      await signInWithEmailAndPassword(fireAuth, mail, password);
+      setMail("");
+      setPassword("");
+
+    } catch (error) {
+      console.error("ログインエラー:", error.message);
+      alert(error.message);
+    }
+  };  
+
+  function handleButtonClick() {
+    handleLogin();
+    fetchUserData(mail);
+  }
+
+ 
 
   return (
-    <div class="body">
-      <h1>Login</h1>
+    <div className="body">
+      <h1>ログイン</h1>
       <input
         type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
+        placeholder="メールアドレス"
+        value={mail}
+        onChange={(e) => setMail(e.target.value)}
       />
       <input
         type="password"
-        placeholder="Password"
+        placeholder="パスワード"
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button onClick={handleLogin}>Login</button>
+      <button onClick={handleButtonClick}>ログイン</button>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {username && <p>ようこそ、{username}さん！</p>}
       <div>
-        <Link to="/create">Create new account</Link>
+        <Link to="/create">新しいアカウントを作成</Link>
       </div>
     </div>
   );
 }
-
 function Createaccount(){
   return (
     <div class="body">
@@ -95,9 +271,9 @@ function Post() {
   const [error, setError] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
 
-  const API_URL = "http://localhost:8000/post";
-  const APIkey = "AIzaSyAzo1oXczLtTDr7EIYGdU1XKt05mhDUNYc";
-  const GEMINI_API_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?key=AIzaSyAzo1oXczLtTDr7EIYGdU1XKt05mhDUNYc";
+  const API_URL ="http://localhost:8000/post";
+  
+  const GEMINI_API_URL ="https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent?";
 
   useEffect(() => {
     const fetchPosts = async () => {
@@ -129,32 +305,7 @@ function Post() {
 
     
 
-  const handleEdit = async () => {
-    if (!content.trim()) {
-      alert("Content cannot be empty!");
-      return;
-    }
-
-    setIsEditing(true); // ローディング状態を表示
-
-    try {
-      const response = await axios.post(
-        GEMINI_API_URL,
-        { text: "${content}を添削して適切にしたものを出力してください" },
-        {
-          headers: {
-            Authorization: `Bearer ${APIkey}`, // Gemini APIキーを設定
-          },
-        }
-      );
-      setContent(response.data.editedText); // 添削された文章をセット
-    } catch (error) {
-      console.error("Error with Gemini API:", error);
-      alert("Failed to edit text. Please try again.");
-    } finally {
-      setIsEditing(false); // ローディング状態を解除
-    }
-  };
+  
 
 
 
@@ -170,40 +321,13 @@ function Post() {
           style={{ width: "100%", height: "100px", marginBottom: "10px" }}
         />
         <div style={{ marginBottom: "10px" }}>
-          <button
-            type="button"
-            onClick={handleEdit}
-            disabled={isEditing}
-            style={{
-              padding: "10px 20px",
-              cursor: isEditing ? "not-allowed" : "pointer",
-              marginRight: "10px",
-            }}
-          >
-            {isEditing ? "Editing..." : "Edit with Gemini"}
-          </button>
+        
           <button type="submit" style={{ padding: "10px 20px", cursor: "pointer" }}>
             Post
           </button>
         </div>
       </form>
-      <div>
-        {posts.map((post) => (
-          <div
-            key={post.id}
-            style={{
-              border: "1px solid #ccc",
-              padding: "10px",
-              marginBottom: "10px",
-            }}
-          >
-            <p>{post.content}</p>
-            <div style={{ fontSize: "0.8em", color: "gray" }}>
-              {new Date(post.timestamp).toLocaleString()}
-            </div>
-          </div>
-        ))}
-      </div>
+      
     </div>
   );
 };
@@ -252,9 +376,7 @@ function App() {
           <li>
             <Link to="/" className="sidetext">Home</Link>
           </li>
-          <li>
-            <Link to="/post" className="sidetext">Post</Link>
-          </li>
+
           {user ? (
             <>
 
@@ -262,6 +384,9 @@ function App() {
                 <button  onClick={handleLogout}>
                   Logout
                 </button>
+              </li>
+              <li>
+              <Link to="/post" className="sidetext">Post</Link>
               </li>
             </>
           ):(
